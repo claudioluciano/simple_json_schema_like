@@ -8,38 +8,40 @@ import (
 
 const timeStringKind = "time.Time"
 
-/*Parse receive anything and try to parse to a JSON where with the type of the field.
+/*
+Parse receive anything and try to parse to a JSON where with the type of the field.
 Something like this
-{
-    "Int": "int",
-    "Map": {
-        "Key1": "string",
-        "Key2": "int",
-        "Key3": "bool"
-    },
-    "SliceOfString": "[string]",
-    "String": "string",
-    "Struct": {
-        "Int": "int",
-        "Map": {
-            "Key1": "string",
-            "Key2": "int",
-            "Key3": "bool"
-        },
-        "SliceOfString": "[string]",
-        "String": "string"
-    },
-    "StructPtr": {
-        "Int": "int",
-        "Map": {
-            "Key1": "string",
-            "Key2": "int",
-            "Key3": "bool"
-        },
-        "SliceOfString": "[string]",
-        "String": "string"
-    }
-}
+
+	{
+	    "Int": "int",
+	    "Map": {
+	        "Key1": "string",
+	        "Key2": "int",
+	        "Key3": "bool"
+	    },
+	    "SliceOfString": "[string]",
+	    "String": "string",
+	    "Struct": {
+	        "Int": "int",
+	        "Map": {
+	            "Key1": "string",
+	            "Key2": "int",
+	            "Key3": "bool"
+	        },
+	        "SliceOfString": "[string]",
+	        "String": "string"
+	    },
+	    "StructPtr": {
+	        "Int": "int",
+	        "Map": {
+	            "Key1": "string",
+	            "Key2": "int",
+	            "Key3": "bool"
+	        },
+	        "SliceOfString": "[string]",
+	        "String": "string"
+	    }
+	}
 */
 func Parse(in interface{}) interface{} {
 	v := reflect.ValueOf(in)
@@ -61,8 +63,8 @@ func parse(v reflect.Value) interface{} {
 		return parsePrt(v)
 	case reflect.Map:
 		return parseMap(v)
-	case reflect.Slice:
-		return fmt.Sprintf("[%v]", parseSlice(v))
+	case reflect.Slice, reflect.Array:
+		return parseSlice(v)
 	default:
 		vv := v.Type().String()
 
@@ -123,7 +125,28 @@ func parseMap(v reflect.Value) interface{} {
 }
 
 func parseSlice(v reflect.Value) interface{} {
-	return v.Type().Elem()
+	m := []interface{}{}
+	if v.Len() == 0 {
+		el := v.Type().Elem()
+		elType := el.String()
+
+		if el.Kind() == reflect.Interface {
+			elType = "any"
+		}
+
+		m = append(m, fmt.Sprintf("%v", elType))
+
+		return m
+	}
+
+	for i := 0; i < v.Len(); i++ {
+		field := v.Index(i)
+		t := parse(field)
+
+		m = append(m, t)
+	}
+
+	return m
 }
 
 func isTime(v reflect.Value) bool {
