@@ -1,47 +1,32 @@
-package simplejsonschemalike
+package main
 
 import (
 	"fmt"
 	"reflect"
-	"unicode"
 )
 
 const timeStringKind = "time.Time"
 
 /*
-Parse receive anything and try to parse to a JSON where with the type of the field.
-Something like this
+Parse receives anything and tries to parse it to a JSON schema-like representation
+that has the same type as the input.
 
-	{
-	    "Int": "int",
-	    "Map": {
-	        "Key1": "string",
-	        "Key2": "int",
-	        "Key3": "bool"
-	    },
-	    "SliceOfString": "[string]",
-	    "String": "string",
-	    "Struct": {
-	        "Int": "int",
-	        "Map": {
-	            "Key1": "string",
-	            "Key2": "int",
-	            "Key3": "bool"
-	        },
-	        "SliceOfString": "[string]",
-	        "String": "string"
-	    },
-	    "StructPtr": {
-	        "Int": "int",
-	        "Map": {
-	            "Key1": "string",
-	            "Key2": "int",
-	            "Key3": "bool"
-	        },
-	        "SliceOfString": "[string]",
-	        "String": "string"
-	    }
-	}
+For example, if the input is a struct, the output will be a map with the same fields
+and nested types as the input struct.
+
+If the input is a slice or array, the output will be a slice of the same length
+containing the JSON schema-like representation of each element in the input.
+
+If the input is a map, the output will be a map with the same keys and nested types
+as the input map.
+
+If the input is a pointer to a struct, slice, or map, the output will be a pointer to
+the corresponding JSON schema-like representation.
+
+For other types (e.g. bool, string, int), the output will be the type name as a string.
+
+The function returns an interface{} value that can be asserted to the appropriate type
+after the function call.
 */
 func Parse(in interface{}) interface{} {
 	v := reflect.ValueOf(in)
@@ -66,9 +51,7 @@ func parse(v reflect.Value) interface{} {
 	case reflect.Slice, reflect.Array:
 		return parseSlice(v)
 	default:
-		vv := v.Type().String()
-
-		return vv
+		return v.Type().String()
 	}
 }
 
@@ -86,13 +69,12 @@ func parseStruct(v reflect.Value) map[string]interface{} {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		structfield := v.Type().Field(i)
-		fieldName := structfield.Name
 
-		if !exportedField(structfield.Name) {
+		if !structfield.IsExported() {
 			continue
 		}
 
-		m[fieldName] = parse(field)
+		m[structfield.Name] = parse(field)
 	}
 
 	return m
@@ -125,7 +107,6 @@ func parseMap(v reflect.Value) interface{} {
 }
 
 func parseSlice(v reflect.Value) interface{} {
-	m := []interface{}{}
 	if v.Len() == 0 {
 		el := v.Type().Elem()
 		elType := el.String()
@@ -134,11 +115,10 @@ func parseSlice(v reflect.Value) interface{} {
 			elType = "any"
 		}
 
-		m = append(m, fmt.Sprintf("%v", elType))
-
-		return m
+		return fmt.Sprintf("[%v]", elType)
 	}
 
+	m := []interface{}{}
 	for i := 0; i < v.Len(); i++ {
 		field := v.Index(i)
 		t := parse(field)
@@ -152,10 +132,4 @@ func parseSlice(v reflect.Value) interface{} {
 func isTime(v reflect.Value) bool {
 	t := v.Type().String()
 	return t == timeStringKind || t == fmt.Sprintf("*%v", timeStringKind)
-}
-
-func exportedField(name string) bool {
-	r := []rune(name)
-
-	return unicode.IsUpper(r[0]) && unicode.IsLetter(r[0])
 }

@@ -1,89 +1,127 @@
-package simplejsonschemalike
+package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"reflect"
 	"testing"
 	"time"
 )
 
+type Person struct {
+	Name string
+	Age  int
+}
+
+type User struct {
+	ID        int
+	FirstName string
+	LastName  string
+}
+
+type Event struct {
+	ID      int
+	Title   string
+	Date    time.Time
+	Guests  []Person
+	Details map[string]string
+}
+
 func TestParse(t *testing.T) {
-	type inn struct {
-		String        string
-		Int           int
-		SliceOfString []string
-		Map           map[string]interface{}
-	}
-
-	type in struct {
-		String        string
-		Int           int
-		SliceOfString []string
-		Map           map[string]interface{}
-		Time          *time.Time
-		Struct        inn
-		StructPtr     *inn
-	}
-
-	type args struct {
-		in interface{}
-	}
-
 	tests := []struct {
-		name string
-		args args
-		want string
+		name     string
+		input    interface{}
+		expected interface{}
 	}{
 		{
-			name: "",
-			args: args{
-				in: in{
-					String:        "",
-					Int:           0,
-					SliceOfString: []string{},
-					Map: map[string]interface{}{
-						"Key1": "",
-						"Key2": 0,
-						"Key3": true,
-					},
-					Struct: inn{
-						String:        "",
-						Int:           0,
-						SliceOfString: []string{},
-						Map: map[string]interface{}{
-							"Key1": "",
-							"Key2": 0,
-							"Key3": true,
-						},
-					},
-					StructPtr: &inn{
-						String:        "",
-						Int:           0,
-						SliceOfString: []string{},
-						Map: map[string]interface{}{
-							"Key1": "",
-							"Key2": 0,
-							"Key3": true,
-						},
-					},
-				},
+			name:     "bool",
+			input:    true,
+			expected: "bool",
+		},
+		{
+			name:     "string",
+			input:    "hello",
+			expected: "string",
+		},
+		{
+			name:     "int",
+			input:    42,
+			expected: "int",
+		},
+		{
+			name: "struct",
+			input: Person{
+				Name: "Alice",
+				Age:  30,
 			},
-			want: mockTest1,
+			expected: `{"Age":"int","Name":"string"}`,
+		},
+		{
+			name: "struct with time.Time field",
+			input: Event{
+				ID:      1,
+				Title:   "Party",
+				Date:    time.Now(),
+				Guests:  []Person{{Name: "Alice", Age: 30}, {Name: "Bob", Age: 40}},
+				Details: map[string]string{"location": "New York", "host": "John"},
+			},
+			expected: `{"Date":"DateTime","Details": {"location": "string", "host": "string"},"Guests":"[{"Age":"int","Name":"string"}, {"Age":"int","Name":"string"}]","ID":"int","Title":"string"}`,
+		},
+		{
+			name:     "slice",
+			input:    []int{1, 2, 3},
+			expected: `["int","int","int"]`,
+		},
+		{
+			name:     "slice with interface",
+			input:    []interface{}{1, "hello", true},
+			expected: `["int","string","bool"]`,
+		},
+		{
+			name:     "empty slice",
+			input:    []int{},
+			expected: `["int"]`,
+		},
+		{
+			name:     "map",
+			input:    map[string]int{"one": 1, "two": 2},
+			expected: `{"one":"int","two":"int"}`,
+		},
+		{
+			name:     "empty map",
+			input:    map[string]int{},
+			expected: `{}`,
+		},
+		{
+			name: "pointer to struct",
+			input: &User{
+				ID:        1,
+				FirstName: "John",
+				LastName:  "Doe",
+			},
+			expected: `{"FirstName":"string","ID":"int","LastName":"string"}`,
+		},
+		{
+			name:     "nil pointer",
+			input:    (*User)(nil),
+			expected: `{"FirstName":"string","ID":"int","LastName":"string"}`,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Parse(tt.args.in)
-			if !equals(got, tt.want) {
-				t.Errorf("Parse() = %v, want %v", got, tt.want)
+			actual := Parse(tt.input)
+
+			expectedMap := make(map[string]interface{})
+			expectedBytes, _ := json.Marshal(actual)
+			json.Unmarshal(expectedBytes, &expectedMap)
+
+			actualMap := make(map[string]interface{})
+			actualBytes, _ := json.Marshal(actual)
+			json.Unmarshal(actualBytes, &actualMap)
+
+			if !reflect.DeepEqual(actualMap, expectedMap) {
+				t.Errorf("Expected %v, but got %v", tt.expected, actual)
 			}
 		})
 	}
-}
-
-func equals(value interface{}, jsonValue string) bool {
-	b, _ := json.Marshal(value)
-
-	fmt.Println(string(b))
-	return string(b) == jsonValue
 }
