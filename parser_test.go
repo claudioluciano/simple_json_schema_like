@@ -1,4 +1,4 @@
-package main
+package simplejsonschemalike
 
 import (
 	"encoding/json"
