@@ -19,11 +19,13 @@ type User struct {
 }
 
 type Event struct {
-	ID      int
-	Title   string
-	Date    time.Time
-	Guests  []Person
-	Details map[string]string
+	ID         int
+	Title      string
+	Date       time.Time
+	Guests     []Person
+	Details    map[string]string
+	PtrDate    *time.Time
+	unexported string
 }
 
 func TestParse(t *testing.T) {
@@ -56,7 +58,7 @@ func TestParse(t *testing.T) {
 			expected: `{"Age":"int","Name":"string"}`,
 		},
 		{
-			name: "struct with time.Time field",
+			name: "struct with one time.Time field filled and the other nil",
 			input: Event{
 				ID:      1,
 				Title:   "Party",
@@ -64,7 +66,7 @@ func TestParse(t *testing.T) {
 				Guests:  []Person{{Name: "Alice", Age: 30}, {Name: "Bob", Age: 40}},
 				Details: map[string]string{"location": "New York", "host": "John"},
 			},
-			expected: `{"Date":"DateTime","Details": {"location": "string", "host": "string"},"Guests":"[{"Age":"int","Name":"string"}, {"Age":"int","Name":"string"}]","ID":"int","Title":"string"}`,
+			expected: `{"Date":"date-time","Details": {"location": "string", "host": "string"},"Guests":"[{"Age":"int","Name":"string"}, {"Age":"int","Name":"string"}]","ID":"int","Title":"string","PtrDate":"date-time"}`,
 		},
 		{
 			name:     "slice",
@@ -113,11 +115,11 @@ func TestParse(t *testing.T) {
 
 			expectedMap := make(map[string]interface{})
 			expectedBytes, _ := json.Marshal(actual)
-			json.Unmarshal(expectedBytes, &expectedMap)
+			_ = json.Unmarshal(expectedBytes, &expectedMap)
 
 			actualMap := make(map[string]interface{})
 			actualBytes, _ := json.Marshal(actual)
-			json.Unmarshal(actualBytes, &actualMap)
+			_ = json.Unmarshal(actualBytes, &actualMap)
 
 			if !reflect.DeepEqual(actualMap, expectedMap) {
 				t.Errorf("Expected %v, but got %v", tt.expected, actual)

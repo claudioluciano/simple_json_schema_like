@@ -7,27 +7,25 @@ import (
 
 const timeStringKind = "time.Time"
 
-/*
-Parse receives anything and tries to parse it to a JSON schema-like representation
-that has the same type as the input.
-
-For example, if the input is a struct, the output will be a map with the same fields
-and nested types as the input struct.
-
-If the input is a slice or array, the output will be a slice of the same length
-containing the JSON schema-like representation of each element in the input.
-
-If the input is a map, the output will be a map with the same keys and nested types
-as the input map.
-
-If the input is a pointer to a struct, slice, or map, the output will be a pointer to
-the corresponding JSON schema-like representation.
-
-For other types (e.g. bool, string, int), the output will be the type name as a string.
-
-The function returns an interface{} value that can be asserted to the appropriate type
-after the function call.
-*/
+// Parse receives anything and tries to parse it to a JSON schema-like representation
+// that has the same type as the input.
+//
+// For example, if the input is a struct, the output will be a map with the same fields
+// and nested types as the input struct.
+//
+// If the input is a slice or array, the output will be a slice of the same length
+// containing the JSON schema-like representation of each element in the input.
+//
+// If the input is a map, the output will be a map with the same keys and nested types
+// as the input map.
+//
+// If the input is a pointer to a struct, slice, or map, the output will be a pointer to
+// the corresponding JSON schema-like representation.
+//
+// For other types (e.g. bool, string, int), the output will be the type name as a string.
+//
+// The function returns an interface{} value that can be asserted to the appropriate type
+// after the function call.
 func Parse(in interface{}) interface{} {
 	v := reflect.ValueOf(in)
 
@@ -38,7 +36,7 @@ func parse(v reflect.Value) interface{} {
 	switch v.Kind() {
 	case reflect.Struct:
 		if ok := isTime(v); ok {
-			return "DateTime"
+			return "date-time"
 		}
 
 		return parseStruct(v)
@@ -57,7 +55,7 @@ func parse(v reflect.Value) interface{} {
 
 func parseNil(v reflect.Value) interface{} {
 	if ok := isTime(v); ok {
-		return "DateTime"
+		return "date-time"
 	}
 
 	return v.Type().String()
@@ -67,14 +65,13 @@ func parseStruct(v reflect.Value) map[string]interface{} {
 	m := make(map[string]interface{})
 
 	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		structfield := v.Type().Field(i)
+		field := v.Type().Field(i)
 
-		if !structfield.IsExported() {
+		if !field.IsExported() {
 			continue
 		}
 
-		m[structfield.Name] = parse(field)
+		m[field.Name] = parse(v.Field(i))
 	}
 
 	return m
@@ -99,7 +96,6 @@ func parseMap(v reflect.Value) interface{} {
 
 	for _, key := range v.MapKeys() {
 		value := v.MapIndex(key)
-
 		m[key.String()] = parse(value)
 	}
 
