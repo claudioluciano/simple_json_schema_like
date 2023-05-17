@@ -41,9 +41,7 @@ The output format of the `Parse` function depends on the input type:
 
 - Slice or Array: the output is a slice of the same length as the input slice or array. Each element of the output slice is the corresponding type of the input slice or array elements, represented as strings.
 
-- Pointer to Struct, Slice, or Map: the output is a pointer to the corresponding JSON schema-like representation.
-
-- Other types: the output is the type name as a string.
+- Primitive types: the output is the type name as a string.
 
 ### Examples
 
@@ -89,22 +87,8 @@ parsed := Parse(v)
 //     "int",
 // }
 
-// Pointer to Struct
-v := &struct {
-    Age  int
-    Name string
-}{
-    Age:  30,
-    Name: "John",
-}
 
-parsed := Parse(v)
-// parsed = *map[string]interface{}{
-//     "Age":  "int",
-//     "Name": "string",
-// }
-
-// Other types
+// Primitive types
 v := true
 
 parsed := Parse(v)
