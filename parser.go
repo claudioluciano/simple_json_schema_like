@@ -19,10 +19,7 @@ const timeStringKind = "time.Time"
 // If the input is a map, the output will be a map with the same keys and nested types
 // as the input map.
 //
-// If the input is a pointer to a struct, slice, or map, the output will be a pointer to
-// the corresponding JSON schema-like representation.
-//
-// For other types (e.g. bool, string, int), the output will be the type name as a string.
+// For primitive types (e.g. bool, string, int), the output will be the type name as a string.
 //
 // The function returns an interface{} value that can be asserted to the appropriate type
 // after the function call.
@@ -114,11 +111,10 @@ func parseSlice(v reflect.Value) interface{} {
 		return fmt.Sprintf("[%v]", elType)
 	}
 
-	m := []interface{}{}
+	var m []interface{}
 	for i := 0; i < v.Len(); i++ {
 		field := v.Index(i)
 		t := parse(field)
-
 		m = append(m, t)
 	}
 
