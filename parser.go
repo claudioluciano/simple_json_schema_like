@@ -3,6 +3,8 @@ package simplejsonschemalike
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/fatih/structtag"
 )
 
 const timeStringKind = "time.Time"
@@ -23,17 +25,16 @@ const timeStringKind = "time.Time"
 //
 // The function returns an interface{} value that can be asserted to the appropriate type
 // after the function call.
-func Parse(in interface{}) interface{} {
+func Parse(in interface{}) (interface{}, error) {
 	v := reflect.ValueOf(in)
-
 	return parse(v)
 }
 
-func parse(v reflect.Value) interface{} {
+func parse(v reflect.Value) (interface{}, error) {
 	switch v.Kind() {
 	case reflect.Struct:
 		if ok := isTime(v); ok {
-			return "date-time"
+			return "date-time", nil
 		}
 
 		return parseStruct(v)
@@ -46,7 +47,7 @@ func parse(v reflect.Value) interface{} {
 	case reflect.Slice, reflect.Array:
 		return parseSlice(v)
 	default:
-		return v.Type().String()
+		return v.Type().String(), nil
 	}
 }
 
@@ -58,7 +59,7 @@ func parseNil(v reflect.Value) interface{} {
 	return v.Type().String()
 }
 
-func parseStruct(v reflect.Value) map[string]interface{} {
+func parseStruct(v reflect.Value) (map[string]interface{}, error) {
 	m := make(map[string]interface{})
 
 	for i := 0; i < v.NumField(); i++ {
@@ -68,38 +69,72 @@ func parseStruct(v reflect.Value) map[string]interface{} {
 			continue
 		}
 
-		m[field.Name] = parse(v.Field(i))
+		name := field.Name
+		tagName, err := getNameFromTag(field)
+		if err != nil {
+			return nil, err
+		}
+		if tagName != "" {
+			name = tagName
+		}
+
+		v, err := parse(v.Field(i))
+		if err != nil {
+			return nil, err
+		}
+
+		m[name] = v
 	}
 
-	return m
+	return m, nil
 }
 
-func parseInterface(v reflect.Value) interface{} {
+func getNameFromTag(field reflect.StructField) (string, error) {
+	tags, err := structtag.Parse(string(field.Tag))
+	if err != nil {
+		return "", err
+	}
+
+	jsonTag, err := tags.Get("json")
+	if err != nil {
+		// json tag does not exist
+		return "", nil
+	}
+
+	return jsonTag.Name, nil
+}
+
+func parseInterface(v reflect.Value) (interface{}, error) {
 	field := v.Elem()
 	return parse(field)
 }
 
-func parsePrt(v reflect.Value) interface{} {
+func parsePrt(v reflect.Value) (interface{}, error) {
 	if v.IsNil() {
-		return parseNil(v)
+		return parseNil(v), nil
 	}
 
 	field := v.Elem()
 	return parse(field)
 }
 
-func parseMap(v reflect.Value) interface{} {
+func parseMap(v reflect.Value) (interface{}, error) {
 	m := make(map[string]interface{})
 
 	for _, key := range v.MapKeys() {
 		value := v.MapIndex(key)
-		m[key.String()] = parse(value)
+		v, err := parse(value)
+		if err != nil {
+			return nil, err
+		}
+
+		m[key.String()] = v
 	}
 
-	return m
+	return m, nil
 }
 
-func parseSlice(v reflect.Value) interface{} {
+func parseSlice(v reflect.Value) (interface{}, error) {
 	if v.Len() == 0 {
 		el := v.Type().Elem()
 		elType := el.String()
@@ -108,17 +143,21 @@ func parseSlice(v reflect.Value) interface{} {
 			elType = "any"
 		}
 
-		return fmt.Sprintf("[%v]", elType)
+		return fmt.Sprintf("[%v]", elType), nil
 	}
 
 	var m []interface{}
 	for i := 0; i < v.Len(); i++ {
 		field := v.Index(i)
-		t := parse(field)
+		t, err := parse(field)
+		if err != nil {
+			return nil, err
+		}
+
 		m = append(m, t)
 	}
 
-	return m
+	return m, nil
 }
 
 func isTime(v reflect.Value) bool {

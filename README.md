@@ -19,7 +19,7 @@ v := struct {
     Name: "John",
 }
 
-parsed := Parse(v)
+parsed, err := Parse(v)
 ```
 
 The `parsed` variable will now contain a map with the same fields as the input struct:
@@ -35,7 +35,7 @@ map[string]interface{}{
 
 The output format of the `Parse` function depends on the input type:
 
-- Struct: the output is a map with the same fields as the input struct. The keys of the map are the field names, and the values are the field types represented as strings.
+- Struct: the output is a map with the same fields as the input struct. The keys of the map are the field names (if `json` tags is being used, the name attribute will be the key), and the values are the field types represented as strings.
 
 - Map: the output is a map with the same keys as the input map. The values of the map are the corresponding types of the input map values, represented as strings.
 
@@ -50,16 +50,16 @@ Here are some examples of input and output for the `Parse` function:
 ```go
 // Struct
 v := struct {
-    Age  int
+    Age  int `json:"age"`
     Name string
 }{
     Age:  30,
     Name: "John",
 }
 
-parsed := Parse(v)
+parsed, err := Parse(v)
 // parsed = map[string]interface{}{
-//     "Age":  "int",
+//     "age":  "int",
 //     "Name": "string",
 // }
 
@@ -69,7 +69,7 @@ v := map[string]int{
     "bar": 69,
 }
 
-parsed := Parse(v)
+parsed, err := Parse(v)
 // parsed = map[string]interface{}{
 //     "foo": "int",
 //     "bar": "int",
@@ -81,7 +81,7 @@ v := []interface{}{
     42,
 }
 
-parsed := Parse(v)
+parsed, err := Parse(v)
 // parsed = []interface{}{
 //     "string",
 //     "int",
@@ -91,6 +91,6 @@ parsed := Parse(v)
 // Primitive types
 v := true
 
-parsed := Parse(v)
+parsed, err := Parse(v)
 // parsed = "bool"
 ```
